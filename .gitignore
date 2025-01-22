@@ -1,4 +1,4 @@
-data-processing/sequences/
-data-processing/out_sequences/
-data-processing/out_frames/
-data-processing/frames/
+data/sequences/
+data/out_sequences/
+data/out_frames/
+data/frames/
