@@ -2,3 +2,6 @@ data/sequences/
 data/out_sequences/
 data/out_frames/
 data/frames/
+data 
+scripts/offline_dataset
+__pycache__/
