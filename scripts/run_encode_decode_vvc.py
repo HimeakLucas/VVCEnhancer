@@ -1,17 +1,13 @@
 import os
 import time
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.encode_decode_vvc import encode_decode_video
+from utils.encode_decode_vvc import encode_decode_video, subprocess
 
 def main():
     input_dir = "../data/sequences"
     encoded_dir = "../data/out_sequences/encoded"
     decoded_dir = "../data/out_sequences/decoded"
     qp_values = [47]
-    #vvcenc_cmd = "vvencapp"
-    #vvdec_cmd = "vvdecapp"
-    preset = "medium"
+    preset = "faster"
 
     start = time.time()
 
@@ -35,20 +31,19 @@ def main():
             os.makedirs(os.path.dirname(decoded_path), exist_ok=True)
 
             start_v = time.time()
-            success, error_message = encode_decode_video(
-                input_path,
-                encoded_path,
-                decoded_path,
-                qp,
-                preset = preset
-            )
-
-            if success:
+            try:
+                encode_decode_video(
+                    input_path,
+                    encoded_path,
+                    decoded_path,
+                    qp,
+                    preset=preset
+                )
                 stats[qp]['success'] += 1
                 print(f"QP{qp}: OK ({int(time.time()-start_v)}s)")
-            else:
+            except RuntimeError as e:
                 stats[qp]['errors'] += 1
-                print(f"QP{qp}: Erro - {error_message}")
+                print(f"QP{qp}: Erro - {e}")
                 if video_name not in errored_videos:
                     errored_videos.append(video_name)
 
