@@ -1,63 +1,31 @@
-import os
-import numpy as np
-import cv2
+import torch
+import torch.nn as nn
+from skimage.metrics import structural_similarity as ssim
 
-def calculate_psnr(original_frame, restored_frame):
-
-    original_frame = original_frame.astype(np.float32)
-    restored_frame = restored_frame.astype(np.float32)
-    
-    mse = np.mean((original_frame - restored_frame) ** 2)
-    
+def calculate_psnr(output, target, max_value=1.0):
+    #Assume que os valores estão normalizados entre 0 e max_value.
+    mse = nn.functional.mse_loss(output, target)
     if mse == 0:
         return float('inf')
+    psnr_val = 10 * torch.log10((max_value ** 2) / mse)
+    return psnr_val.item()
+
+def calculate_ssim(output, target, max_value=1.0):
+    # Assume que as imagens são tensores com shape [B, 1, H, W] e valores em [0, max_value].
+    # B (Batch Size): Número de imagens processadas simultaneamente.
+    # 1 (Número de Canais): 1 = Escala de cinza, 3 = RGB
+    # H (Height)
+    # W (Width)
     
-    pixel_max = 255.0 
-    psnr = 20 * np.log10(pixel_max / np.sqrt(mse))
-    
-    return psnr
-
-
-def calculate_video_psnr(original_frames_dir, restored_frames_dir):
-
-    def load_frame_as_grayscale(frame_path):
-        frame = cv2.imread(frame_path, cv2.IMREAD_GRAYSCALE)
-        return frame
-
-    original_frames = sorted(os.listdir(original_frames_dir))
-    restored_frames = sorted(os.listdir(restored_frames_dir))
-    
-    psnr_values = []
-    
-    if len(original_frames) != len(restored_frames):
-        raise ValueError("The videos don't have the same amout of frames")
-    
-    for original_frame_name, restored_frame_name in zip(original_frames, restored_frames):
-
-        original_frame_path = os.path.join(original_frames_dir, original_frame_name)
-        restored_frame_path = os.path.join(restored_frames_dir, restored_frame_name)
-        
-        original_frame = load_frame_as_grayscale(original_frame_path)
-        restored_frame = load_frame_as_grayscale(restored_frame_path)
-
-        psnr = calculate_psnr(original_frame, restored_frame)
-        psnr_values.append(psnr)
-
-    if psnr_values:
-        average_psnr = np.mean(psnr_values)
-        return average_psnr
-    else:
-        return None 
-
-
-if __name__ == "__main__":
-
-    original_frames_dir = "sequences/video1_frames"
-    restored_frames_dir = "out_sequences/fast_preset/video1_restored_frames"
-
-    average_psnr = calculate_video_psnr(original_frames_dir, restored_frames_dir)
-
-    if average_psnr is not None:
-        print(f"Mean PSNR: {average_psnr:.2f} dB")
-    else:
-        print("Error")
+    ssim_total = 0.0
+    output_np = output.cpu().numpy()
+    target_np = target.cpu().numpy()
+    batch = output_np.shape[0]
+    for i in range(batch):
+        # Como as imagens são em escala de cinza, usamos o primeiro canal.
+        out_img = output_np[i, 0, :, :]
+        tar_img = target_np[i, 0, :, :]
+        # Calcular SSIM; a função espera que os valores estejam na escala [0, max_value]
+        ssim_value = ssim(tar_img, out_img, data_range=max_value)
+        ssim_total += ssim_value
+    return ssim_total / batch
