@@ -20,7 +20,7 @@ class AR_CNN(nn.Module):
         out = self.dropout(out)
         out = self.relu(out)
         out = self.conv3(out)
-        out = out + residual  # conexão residual
+        out = out + residual
         out = torch.clamp(out, 0, 1)  # garante saída no intervalo [0,1]
         return out
 
@@ -44,6 +44,6 @@ class QuickLoss(nn.Module):
         grad_loss_x = torch.mean(torch.abs(grad_x_out - grad_x_tar))
         grad_loss_y = torch.mean(torch.abs(grad_y_out - grad_y_tar))
         
-        grad_loss = grad_loss_x + grad_loss_y  # ou você pode tirar a média, se preferir
+        grad_loss = grad_loss_x + grad_loss_y
         
         return mse_loss + self.grad_weight * grad_loss
