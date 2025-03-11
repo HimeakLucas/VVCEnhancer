@@ -72,7 +72,7 @@ def train_model(model,
             running_loss += loss.item()
 
             if batch_idx % 100 == 0:
-                print(f"  [Treino] Epoch {epoch}/{num_epochs}, Batch {batch_idx}/{len(train_loader)} "
+                print(f"  [Train] Epoch {epoch}/{num_epochs}, Batch {batch_idx}/{len(train_loader)} "
                       f"- Loss: {loss.item():.6f}")
 
         avg_train_loss = running_loss / len(train_loader)
