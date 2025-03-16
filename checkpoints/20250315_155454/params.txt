@@ -1,0 +1,13 @@
+seed: 42
+num_epochs: 10
+batch_size: 128
+learning_rate: 0.001
+grad_weight: 1
+patchs_per_frame: 5
+patch_size: 64
+device: cuda
+stride: 256
+train_original_dir: ../data/frames_y/train/original
+train_processed_dir: ../data/frames_y/train/qp47
+val_original_dir: ../data/frames_y/val/original
+val_processed_dir: ../data/frames_y/val/qp47
