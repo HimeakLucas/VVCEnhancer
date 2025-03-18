@@ -1,31 +1,59 @@
 import torch
-import torch.nn as nn
-from skimage.metrics import structural_similarity as ssim
+import torch.nn.functional as F
 
 def calculate_psnr(output, target, max_value=1.0):
-    #Assume que os valores estão normalizados entre 0 e max_value.
-    mse = nn.functional.mse_loss(output, target)
-    if mse == 0:
-        return float('inf')
+    """
+    Calcula o PSNR de forma vetorizada para cada imagem no batch.
+    Retorna a média do PSNR para o batch.
+    """
+    mse = ((output - target) ** 2).view(output.shape[0], -1).mean(dim=1)
+    mse = torch.clamp(mse, min=1e-10)  # Evita divisão por zero
     psnr_val = 10 * torch.log10((max_value ** 2) / mse)
-    return psnr_val.item()
+    return psnr_val.mean().item()
 
-def calculate_ssim(output, target, max_value=1.0):
-    # Assume que as imagens são tensores com shape [B, 1, H, W] e valores em [0, max_value].
-    # B (Batch Size): Número de imagens processadas simultaneamente.
-    # 1 (Número de Canais): 1 = Escala de cinza, 3 = RGB
-    # H (Height)
-    # W (Width)
+def gaussian_window(window_size, sigma):
+    """
+    Cria uma janela gaussiana 1D.
+    """
+    coords = torch.arange(window_size, dtype=torch.float32) - (window_size - 1) / 2.0
+    gauss = torch.exp(-(coords ** 2) / (2 * sigma ** 2))
+    return gauss / gauss.sum()
+
+def create_window(window_size, channel):
+    """
+    Cria uma janela 2D gaussiana para convolução, com shape [channel, 1, window_size, window_size].
+    """
+    _1D_window = gaussian_window(window_size, sigma=1.5).unsqueeze(1)
+    _2D_window = _1D_window @ _1D_window.t()  # Produto externo para criar o kernel 2D
+    window = _2D_window.unsqueeze(0).unsqueeze(0).expand(channel, 1, window_size, window_size)
+    return window.contiguous()
+
+def calculate_ssim(output, target, max_value=1.0, window_size=11):
+    """
+    Calcula o SSIM de forma vetorizada usando convolução com janela gaussiana.
+    """
+    (_, channel, _, _) = output.size()
+    window = create_window(window_size, channel).to(output.device)
+
+    # Média local usando convolução
+    mu_output = F.conv2d(output, window, padding=window_size//2, groups=channel)
+    mu_target = F.conv2d(target, window, padding=window_size//2, groups=channel)
+
+    mu_output_sq = mu_output.pow(2)
+    mu_target_sq = mu_target.pow(2)
+    mu_output_target = mu_output * mu_target
+
+    # Desvio padrão local
+    sigma_output_sq = F.conv2d(output * output, window, padding=window_size//2, groups=channel) - mu_output_sq
+    sigma_target_sq = F.conv2d(target * target, window, padding=window_size//2, groups=channel) - mu_target_sq
+    sigma_output_target = F.conv2d(output * target, window, padding=window_size//2, groups=channel) - mu_output_target
+
+    C1 = (0.01 * max_value) ** 2
+    C2 = (0.03 * max_value) ** 2
+
+    # Cálculo do mapa SSIM
+    ssim_map = ((2 * mu_output_target + C1) * (2 * sigma_output_target + C2)) / \
+               ((mu_output_sq + mu_target_sq + C1) * (sigma_output_sq + sigma_target_sq + C2))
     
-    ssim_total = 0.0
-    output_np = output.cpu().numpy()
-    target_np = target.cpu().numpy()
-    batch = output_np.shape[0]
-    for i in range(batch):
-        # Como as imagens são em escala de cinza, usamos o primeiro canal.
-        out_img = output_np[i, 0, :, :]
-        tar_img = target_np[i, 0, :, :]
-        # Calcular SSIM; a função espera que os valores estejam na escala [0, max_value]
-        ssim_value = ssim(tar_img, out_img, data_range=max_value)
-        ssim_total += ssim_value
-    return ssim_total / batch
+    # Média do SSIM no batch
+    return ssim_map.mean(dim=[1, 2, 3]).mean().item()
