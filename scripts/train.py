@@ -9,8 +9,8 @@ import sys
 import os
 from datetime import datetime
 import random
+from tqdm import tqdm
 
-# Adiciona o diretório pai ao sys.path
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
 from models.ar_cnn import AR_CNN, QuickLoss  
@@ -26,7 +26,18 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def train_model(model, optimizer, criterion, train_loader, val_loader, device, num_epochs, checkpoint_dir):
+def update_params_file(params_file, base_params, best_epoch, best_improvement):
+    
+    with open(params_file, "w") as f:
+        f.write(base_params)
+        f.write("\n")
+        if best_epoch > 0:
+            f.write(f"Best epoch so far: {best_epoch}\n")
+            f.write(f"Best improvement (PSNR) so far: {best_improvement:.2f}%\n")
+        else:
+            f.write("No best epoch available yet.\n")
+
+def train_model(model, optimizer, criterion, train_loader, val_loader, device, num_epochs, checkpoint_dir, params_file, base_params):
     # Listas para armazenar métricas de cada época
     train_losses = []
     val_losses = []
@@ -42,13 +53,14 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
 
     for epoch in range(1, num_epochs + 1):
         epoch_start_time = time.time()
-        print(f"\nSTARTING EPOCH {epoch}/{num_epochs}")
 
         # Treinamento
         model.train()
         running_loss = 0.0
         
-        for batch_idx, (orig, proc) in enumerate(train_loader):
+        # Loop de treinamento com tqdm
+        train_loop = tqdm(train_loader, desc=f"Training Epoch {epoch}", leave=False)
+        for (orig, proc) in train_loop:
             orig = orig.to(device)
             proc = proc.to(device)
 
@@ -59,9 +71,8 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
             optimizer.step()
 
             running_loss += loss.item()
-
-            if batch_idx % 100 == 0:
-                print(f"  [Train] Epoch {epoch}/{num_epochs}, Batch {batch_idx}/{len(train_loader)} - Loss: {loss.item():.6f}")
+            # Atualiza a barra de progresso com a perda atual
+            train_loop.set_postfix(loss=loss.item())
 
         avg_train_loss = running_loss / len(train_loader)
         train_losses.append(avg_train_loss)
@@ -74,8 +85,10 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
         baseline_total_ssim = 0.0   
         val_loss = 0.0
 
+        # Loop de validação com tqdm
         with torch.no_grad():
-            for orig, proc in val_loader:
+            val_loop = tqdm(val_loader, desc=f"Validation Epoch {epoch}", leave=False)
+            for orig, proc in val_loop:
                 orig = orig.to(device)
                 proc = proc.to(device)
                 
@@ -105,7 +118,7 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
         epoch_duration = epoch_end_time - epoch_start_time
 
         summary_msg = (
-            f"\n[Época {epoch}/{num_epochs}] "
+            f"\n[Epoch {epoch}/{num_epochs}] "
             f"\n  >> Train Loss: {avg_train_loss:.4f}"
             f"\n  >> Val   Loss: {avg_val_loss:.4f}"
             f"\n  >> Val   PSNR (Rede): {avg_psnr:.2f} dB | Baseline: {avg_baseline_psnr:.2f} dB"
@@ -121,6 +134,12 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
             improvement = 0.0
         print(f"  >> Improvement PSNR: {improvement:.2f}%")
 
+        if avg_baseline_ssim > 0:
+            improvement = (avg_ssim - avg_baseline_ssim) / avg_baseline_ssim * 100
+        else:
+            improvement = 0.0
+        print(f"  >> Improvement SSIM: {improvement:.2f}%")
+
         # Salva o melhor modelo se houve melhora na métrica de melhoria percentual de PSNR
         if improvement > best_improvement:
             best_improvement = improvement
@@ -134,6 +153,9 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
         torch.save(model.state_dict(), last_model_path)
         print(f"  >> Last model updated at epoch {epoch}, saved at {last_model_path}")
 
+        # Atualiza o arquivo de parâmetros com as informações da melhor época até o momento
+        update_params_file(params_file, base_params, best_epoch, best_improvement)
+
     print(f"\nBest model was from epoch {best_epoch} with improvement {best_improvement:.2f}%")
     return {
         "train_losses": train_losses,
@@ -141,7 +163,9 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, device, n
         "val_psnrs": val_psnrs,
         "val_ssims": val_ssims,
         "baseline_psnrs": baseline_psnrs,
-        "baseline_ssims": baseline_ssims
+        "baseline_ssims": baseline_ssims,
+        "best_epoch": best_epoch,
+        "best_improvement": best_improvement
     }
 
 def main():
@@ -149,14 +173,15 @@ def main():
     seed = 42
     set_seed(seed)
 
-    num_epochs = 10
-    batch_size = 128
-    learning_rate = 1e-3
-    grad_weight = 0.5
-    patchs_per_frame = 5  # considerando sliding window desativado para validação
-    patch_size = 32
+    num_epochs = 100
+    batch_size = 32
+    learning_rate = 1e-4
+    grad_weight = 0.2
+    patchs_per_frame = 5 # considerando sliding window desativado para validação
+    patch_size = 240
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    stride = 128  # considerando sliding window ativado para treinamento
+    stride = 240  # considerando sliding window ativado para treinamento
+    edge_prob = 0
 
     model = AR_CNN().to(device)
     criterion = QuickLoss(grad_weight=grad_weight)
@@ -170,6 +195,7 @@ def main():
     val_processed_dir = "../data/frames_y/val/qp47"
 
     # Criação dos datasets
+    print("Training dataset: ")
     train_dataset = OnlinePatchDataset(
         original_dir=train_original_dir,
         processed_dir=train_processed_dir,
@@ -177,19 +203,20 @@ def main():
         patches_per_frame=patchs_per_frame,
         transform=transform,
         use_sliding_window=True,
+        edge_prob=edge_prob,
         stride=stride
     )
-    print("Training pairs (sliding window):", len(train_dataset))
 
+    print("Validation dataset: ")
     val_dataset = OnlinePatchDataset(
         original_dir=val_original_dir,
         processed_dir=val_processed_dir,
         patch_size=patch_size,
-        patches_per_frame=patchs_per_frame,
+        patches_per_frame=2,
         transform=transform,
         use_sliding_window=False,
+        edge_prob=edge_prob
     )
-    print("Validation pairs:", len(val_dataset))
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=6, pin_memory=True)
@@ -200,7 +227,8 @@ def main():
     print(f"Experiment: {experiment_folder}")
 
     # Salva os parâmetros do experimento em um arquivo de texto
-    params = f"""seed: {seed}
+    params_file = os.path.join(experiment_folder, "params.txt")
+    base_params = f"""seed: {seed}
 num_epochs: {num_epochs}
 batch_size: {batch_size}
 learning_rate: {learning_rate}
@@ -209,18 +237,15 @@ patchs_per_frame: {patchs_per_frame}
 patch_size: {patch_size}
 device: {device}
 stride: {stride}
+edge_prob: {edge_prob}
 train_original_dir: {train_original_dir}
 train_processed_dir: {train_processed_dir}
 val_original_dir: {val_original_dir}
 val_processed_dir: {val_processed_dir}
 """
-    params_file = os.path.join(experiment_folder, "params.txt")
-    with open(params_file, "w") as f:
-        f.write(params)
-    print(f"Parameters saved at: {params_file}")
 
     # Treinamento
-    train_model(
+    results = train_model(
         model=model,
         optimizer=optimizer,
         criterion=criterion,
@@ -228,7 +253,9 @@ val_processed_dir: {val_processed_dir}
         val_loader=val_loader,
         device=device,
         num_epochs=num_epochs,
-        checkpoint_dir=experiment_folder
+        checkpoint_dir=experiment_folder,
+        params_file=params_file,
+        base_params=base_params
     )
 
 if __name__ == "__main__":
