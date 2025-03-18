@@ -8,11 +8,12 @@ from torchvision import transforms
 
 class OnlinePatchDataset(Dataset):
     def __init__(self, original_dir, processed_dir, patch_size=64, patches_per_frame=3, 
-                 transform=None, use_sliding_window=False, stride=None):
+                 transform=None, use_sliding_window=False, stride=None, edge_prob=0.7):
 
         self.patch_size = patch_size
         self.patches_per_frame = patches_per_frame
         self.transform = transform
+        self.edge_prob = edge_prob
         self.use_sliding_window = use_sliding_window
         if self.use_sliding_window:
             self.stride = stride if stride is not None else patch_size // 2
@@ -135,7 +136,7 @@ class OnlinePatchDataset(Dataset):
 
     def _select_patch(self, img_np):
         h, w = img_np.shape[:2]  
-        if random.random() < 0.7:
+        if random.random() < self.edge_prob:
             edges = cv2.Canny(img_np, 50, 150)
             for _ in range(50):
                 x = random.randint(0, w - self.patch_size)
