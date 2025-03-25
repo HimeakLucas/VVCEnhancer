@@ -34,7 +34,7 @@ def train(model, train_loader, optmizer, criterion, device):
     model.train()
     total_loss = 0
 
-    train_loop = tqdm(train_loader, desc=f"Training", leave=True)
+    train_loop = tqdm(train_loader, desc=f"Training", leave=False)
     for batch, (original, processed) in enumerate(train_loop):
         original = original.to(device)
         processed = processed.to(device)
@@ -60,7 +60,8 @@ def validate(model, val_loader, criterion, device):
     total_baseline_psnr = 0
     total_baseline_ssim = 0
 
-    val_loop = tqdm(val_loader, desc=f"Validation", leave=True)
+    total_loss = 0
+    val_loop = tqdm(val_loader, desc=f"Validation", leave=False)
     
     with torch.no_grad():
         for batch, (original, processed) in enumerate(val_loop):
@@ -84,17 +85,19 @@ def validate(model, val_loader, criterion, device):
     avg_baseline_psnr = total_baseline_psnr / len(val_loader)
     avg_baseline_ssim = total_baseline_ssim / len(val_loader)
 
-    return avg_psnr, avg_ssim, avg_baseline_psnr, avg_baseline_ssim
+    avg_loss = total_loss / len(val_loader)
+
+    return avg_psnr, avg_ssim, avg_baseline_psnr, avg_baseline_ssim, avg_loss
 
 def main():
 
     seed = 42
     set_seed(seed)
 
-    num_epochs = 20
+    num_epochs = 100
     batch_size = 32
     learning_rate = 1e-4
-    grad_weight = 0.2
+    grad_weight = 0
     patchs_per_frame = 2  # considerando sliding window desativado para validação
     patch_size = 240
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -163,18 +166,42 @@ def main():
 
         for epoch in range(num_epochs):
             start_time = time.time()
+            print(f"\n[Epoch {epoch}/{num_epochs}] ")
             train_loss = train(model, train_loader, optimizer, criterion, device)
-            val_psnr, val_ssim, val_baseline_psnr, val_baseline_ssim = validate(model, val_loader, criterion, device)
+            val_psnr, val_ssim, val_baseline_psnr, val_baseline_ssim, val_loss = validate(model, val_loader, criterion, device)
             end_time = time.time()
+            epoch_duration = end_time - start_time
 
-            print(f"Epoch: {epoch + 1}/{num_epochs} | Train loss: {train_loss:.4f} | Val PSNR: {val_psnr:.2f} | Val SSIM: {val_ssim:.2f} | Val Baseline PSNR: {val_baseline_psnr:.2f} | Val Baseline SSIM: {val_baseline_ssim:.2f} | Time: {end_time - start_time:.2f}s")
+            print(f"  >> Train Loss: {train_loss:.4f}")
+            print(f"  >> Val   Loss: {val_loss:.4f}")
+            print(f"  >> Val   PSNR (Rede): {val_psnr:.2f} dB | Baseline: {val_baseline_psnr:.2f} dB")
+            print(f"  >> Val   SSIM (Rede): {val_ssim:.4f}   | Baseline: {val_baseline_ssim:.4f}")
+            print(f"  >> Epoch duration: {epoch_duration:.2f} s")
+
+            psnr_improvement = 0
+            ssim_improvement = 0
+
+            if val_baseline_psnr > 0:
+                psnr_improvement = (val_psnr - val_baseline_psnr) / val_baseline_psnr * 100
+            else:
+                psnr_improvement = 0.0
+            print(f"  >> Improvement PSNR: {psnr_improvement:.2f}%")
+
+            if val_baseline_ssim > 0:
+                ssim_improvement = (val_ssim - val_baseline_ssim) / val_baseline_ssim * 100
+            else:
+                ssim_improvement = 0.0
+            print(f"  >> Improvement SSIM: {ssim_improvement:.2f}%")
 
             mlflow.log_metrics({
                 "train_loss": train_loss,
+                "val_loss": val_loss,
                 "val_psnr": val_psnr,
                 "val_ssim": val_ssim,
                 "val_baseline_psnr": val_baseline_psnr,
-                "val_baseline_ssim": val_baseline_ssim
+                "val_baseline_ssim": val_baseline_ssim,
+                "psnr_improvement": psnr_improvement,
+                "ssim_improvement": ssim_improvement
             }, step=epoch)
 
             mlflow.pytorch.log_model(model, "models")
