@@ -73,6 +73,7 @@ def validate(model, val_loader, criterion, device):
 
             total_psnr += calculate_psnr(output, original)
             total_ssim += calculate_ssim(output, original)
+            total_loss += loss.item()
 
             total_baseline_psnr += calculate_psnr(processed, original)
             total_baseline_ssim += calculate_ssim(processed, original)
