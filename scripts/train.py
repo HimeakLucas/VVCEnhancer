@@ -12,6 +12,7 @@ import random
 from tqdm import tqdm
 import mlflow
 import mlflow.pytorch
+from mlflow.models import infer_signature
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
@@ -194,6 +195,15 @@ def main():
                 ssim_improvement = 0.0
             print(f"  >> Improvement SSIM: {ssim_improvement:.2f}%")
 
+            # Pegando um batch de dados de entrada para inferir a assinatura
+            example_input, _ = next(iter(val_loader))
+            example_input = example_input.to(device)
+
+            # Gerando a assinatura do modelo
+            signature = infer_signature(example_input.cpu().numpy(), model(example_input).cpu().detach().numpy())
+
+            # Logando o modelo com assinatura e exemplo de entrada
+
             mlflow.log_metrics({
                 "train_loss": train_loss,
                 "val_loss": val_loss,
@@ -205,7 +215,9 @@ def main():
                 "ssim_improvement": ssim_improvement
             }, step=epoch)
 
-            mlflow.pytorch.log_model(model, "models")
+            
+            mlflow.pytorch.log_model(model, "models", signature=signature, input_example=example_input.cpu().numpy())
+            #mlflow.log_artifact("model_summary.txt")
 
 if __name__ == "__main__":
     main()
