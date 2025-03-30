@@ -26,8 +26,10 @@ class OnlinePatchDataset(Dataset):
         
         if self.use_sliding_window:
             self._create_pairs_sliding_window()
+            print(f"Created {len(self.pairs)} pairs using sliding window.")
         else:
             self._create_pairs()
+            print(f"Created {len(self.pairs)} pairs using hybrid mode.")
 
     def _map_video_frames(self, root_dir):
         video_map = {}
