@@ -13,6 +13,8 @@ from tqdm import tqdm
 import mlflow
 import mlflow.pytorch
 from mlflow.models import infer_signature
+import tempfile
+
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
@@ -117,7 +119,7 @@ def main():
     val_processed_dir = "../data/frames_y/val/qp47"
 
 # Remova a transformação ToTensor original
-    train_transform = PairedTransform(augment=False, patch_size=patch_size)
+    train_transform = PairedTransform(augment=True, patch_size=patch_size)
     val_transform = PairedTransform(augment=False, patch_size=patch_size)
 
     train_dataset = OnlinePatchDataset(
@@ -125,7 +127,7 @@ def main():
         processed_dir=train_processed_dir,
         patch_size=patch_size,
         patches_per_frame=patchs_per_frame,
-        transform=train_transform,  # Usar a nova transformação pareada
+        transform=train_transform,  
         use_sliding_window=False,
         edge_prob=edge_prob,
         stride=stride
@@ -136,7 +138,7 @@ def main():
         processed_dir=val_processed_dir,
         patch_size=patch_size,
         patches_per_frame=2,
-        transform=val_transform,  # Usar a nova transformação pareada
+        transform=val_transform,  
         use_sliding_window=False,
         edge_prob=edge_prob
     )
@@ -171,9 +173,12 @@ def main():
         }
         mlflow.log_params(params)
 
-        with open("model_summary.txt", "w") as f:
-            f.write(str(summary(model)))
-        mlflow.log_artifact("model_summary.txt")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_summary = os.path.join(tmpdir, "model_summary.txt")
+            with open(model_summary, "w") as f:
+                f.write(str(summary(model)))
+            
+            mlflow.log_artifact(model_summary)
 
 
         for epoch in range(num_epochs):
@@ -215,25 +220,23 @@ def main():
                 "ssim_improvement": ssim_improvement
             }, step=epoch)
 
+            with tempfile.TemporaryDirectory() as tmpdir:
 
-            # Verifica se o PSNR atual é o melhor até agora e salva o checkpoint do modelo
-            if psnr_improvement > best_psnr_improvment:
-                best_psnr_improvment = psnr_improvement
-                torch.save(model.state_dict(), "best_psnr_model.pt")
-                mlflow.log_artifact("best_psnr_model.pt")
-                print("  >> New best psnr model saved!")
+                if psnr_improvement > best_psnr_improvment:
+                    best_psnr_improvment = psnr_improvement
+                    best_model_path = os.path.join(tmpdir, "best_psnr_model.pt")
+                    torch.save(model.state_dict(), best_model_path)
+                    mlflow.log_artifact(best_model_path)
+                    print("  >> New best psnr model saved!")
 
-            # Atualizando a métrica do melhor PSNR registrado
+                if ssim_improvement > best_ssim_improvment:
+                    best_ssim_improvment = ssim_improvement
+                    best_model_path = os.path.join(tmpdir, "best_ssim_model.pt")
+                    torch.save(model.state_dict(), best_model_path)
+                    mlflow.log_artifact(best_model_path)
+                    print("  >> New best ssim model saved!")
+                                
             mlflow.log_metric("best_psnr_improvement", best_psnr_improvment, step=epoch)
-
-            # Verifica se o SSIM atual é o melhor até agora e salva o checkpoint do modelo
-            if ssim_improvement > best_ssim_improvment:
-                best_ssim_improvment = ssim_improvement
-                torch.save(model.state_dict(), "best_ssim_model.pt")
-                mlflow.log_artifact("best_ssim_model.pt")
-                print("  >> New best ssim model saved!")
-
-            # Atualizando a métrica do melhor SSIM registrado
             mlflow.log_metric("best_ssim_improvement", best_ssim_improvment, step=epoch)
 
 
