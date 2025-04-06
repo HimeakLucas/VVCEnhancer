@@ -1,1 +1,0 @@
-Este teste visou avaliar se um número grande de patches por frame compensa a demora de processamento. Por volta da época 100, resolvi parar o treinamento pois as métricas tinham estabilizado
