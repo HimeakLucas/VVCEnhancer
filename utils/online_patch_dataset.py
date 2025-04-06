@@ -6,6 +6,10 @@ import cv2
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+from torchvision.transforms.functional import rotate, hflip, vflip
+import random
+
+
 class OnlinePatchDataset(Dataset):
     def __init__(self, original_dir, processed_dir, patch_size=64, patches_per_frame=3, 
                  transform=None, use_sliding_window=False, stride=None, edge_prob=0.7):
@@ -129,10 +133,9 @@ class OnlinePatchDataset(Dataset):
             patch_box = self._select_patch(np.array(orig_img))
             orig_patch = orig_img.crop(patch_box)
             proc_patch = proc_img.crop(patch_box)
-
+        
         if self.transform:
-            orig_patch = self.transform(orig_patch)
-            proc_patch = self.transform(proc_patch)
+            orig_patch, proc_patch = self.transform(orig_patch, proc_patch)
 
         return orig_patch, proc_patch
 
@@ -185,4 +188,52 @@ if __name__ == "__main__":
     )
     print("Number of validation pairs:", len(val_dataset))
 
-    
+class PairedTransform:
+    def __init__(self, augment=True, patch_size=64):
+        self.augment = augment
+        self.patch_size = patch_size
+        self.angle_range = (-15, 15)
+        self.hflip_p = 0.5
+        self.vflip_p = 0.5
+        self.crop_scale = (0.8, 1.0)
+        
+    def __call__(self, orig_patch, proc_patch):
+        # Converter para PIL Image se necessário
+        if not isinstance(orig_patch, Image.Image):
+            orig_patch = transforms.ToPILImage()(orig_patch)
+        if not isinstance(proc_patch, Image.Image):
+            proc_patch = transforms.ToPILImage()(proc_patch)
+
+        if self.augment:
+            # Horizontal flip
+            if random.random() < self.hflip_p:
+                orig_patch = transforms.functional.hflip(orig_patch)
+                proc_patch = transforms.functional.hflip(proc_patch)
+            
+            # Vertical flip
+            if random.random() < self.vflip_p:
+                orig_patch = transforms.functional.vflip(orig_patch)
+                proc_patch = transforms.functional.vflip(proc_patch)
+            
+            # Rotação aleatória
+            angle = random.uniform(*self.angle_range)
+            orig_patch = transforms.functional.rotate(orig_patch, angle)
+            proc_patch = transforms.functional.rotate(proc_patch, angle)
+            
+            # Random crop
+            scale = random.uniform(*self.crop_scale)
+            new_size = int(self.patch_size * scale)
+            i = random.randint(0, self.patch_size - new_size)
+            j = random.randint(0, self.patch_size - new_size)
+            
+            orig_patch = transforms.functional.crop(orig_patch, i, j, new_size, new_size)
+            proc_patch = transforms.functional.crop(proc_patch, i, j, new_size, new_size)
+            
+            orig_patch = transforms.functional.resize(orig_patch, (self.patch_size, self.patch_size))
+            proc_patch = transforms.functional.resize(proc_patch, (self.patch_size, self.patch_size))
+
+        # Converter para tensor
+        orig_tensor = transforms.ToTensor()(orig_patch)
+        proc_tensor = transforms.ToTensor()(proc_patch)
+        
+        return orig_tensor, proc_tensor

@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/454015848572234336/1b84ac3cdbb24309bfc8da25fef1e478/artifacts
+deleted_time: 1743029819713
+end_time: null
+entry_point_name: ''
+experiment_id: '454015848572234336'
+lifecycle_stage: deleted
+run_id: 1b84ac3cdbb24309bfc8da25fef1e478
+run_name: clean-sheep-953
+run_uuid: 1b84ac3cdbb24309bfc8da25fef1e478
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743023672171
+status: 1
+tags: []
+user_id: lucas

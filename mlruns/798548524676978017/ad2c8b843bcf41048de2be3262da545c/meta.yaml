@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/798548524676978017/ad2c8b843bcf41048de2be3262da545c/artifacts
+end_time: 1743089689237
+entry_point_name: ''
+experiment_id: '798548524676978017'
+lifecycle_stage: active
+run_id: ad2c8b843bcf41048de2be3262da545c
+run_name: learned-smelt-185
+run_uuid: ad2c8b843bcf41048de2be3262da545c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743082343843
+status: 3
+tags: []
+user_id: lucas

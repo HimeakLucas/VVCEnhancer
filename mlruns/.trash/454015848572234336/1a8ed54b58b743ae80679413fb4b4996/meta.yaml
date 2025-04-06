@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/454015848572234336/1a8ed54b58b743ae80679413fb4b4996/artifacts
+deleted_time: 1743029819713
+end_time: 1743029789700
+entry_point_name: ''
+experiment_id: '454015848572234336'
+lifecycle_stage: deleted
+run_id: 1a8ed54b58b743ae80679413fb4b4996
+run_name: honorable-lamb-305
+run_uuid: 1a8ed54b58b743ae80679413fb4b4996
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743029471534
+status: 4
+tags: []
+user_id: lucas

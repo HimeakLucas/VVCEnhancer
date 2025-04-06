@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/454015848572234336/fc3cbb2fb1c64d2c8fba8e4effd5744b/artifacts
+deleted_time: 1743029819713
+end_time: 1743023555223
+entry_point_name: ''
+experiment_id: '454015848572234336'
+lifecycle_stage: deleted
+run_id: fc3cbb2fb1c64d2c8fba8e4effd5744b
+run_name: spiffy-conch-185
+run_uuid: fc3cbb2fb1c64d2c8fba8e4effd5744b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743023497744
+status: 4
+tags: []
+user_id: lucas

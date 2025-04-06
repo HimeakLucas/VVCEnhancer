@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/454015848572234336/2612c003371d4526831457d6c938943a/artifacts
+deleted_time: 1743029819713
+end_time: 1743023430230
+entry_point_name: ''
+experiment_id: '454015848572234336'
+lifecycle_stage: deleted
+run_id: 2612c003371d4526831457d6c938943a
+run_name: flawless-dog-199
+run_uuid: 2612c003371d4526831457d6c938943a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743022240476
+status: 4
+tags: []
+user_id: lucas

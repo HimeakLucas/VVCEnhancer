@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/798548524676978017/88219bdc73d2411ea6e6760bc8984c50/artifacts
+end_time: 1743081863810
+entry_point_name: ''
+experiment_id: '798548524676978017'
+lifecycle_stage: active
+run_id: 88219bdc73d2411ea6e6760bc8984c50
+run_name: ambitious-skunk-306
+run_uuid: 88219bdc73d2411ea6e6760bc8984c50
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743081683056
+status: 4
+tags: []
+user_id: lucas

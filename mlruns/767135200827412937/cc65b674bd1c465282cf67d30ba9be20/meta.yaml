@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/767135200827412937/cc65b674bd1c465282cf67d30ba9be20/artifacts
+end_time: 1743537227343
+entry_point_name: ''
+experiment_id: '767135200827412937'
+lifecycle_stage: active
+run_id: cc65b674bd1c465282cf67d30ba9be20
+run_name: exultant-ox-900
+run_uuid: cc65b674bd1c465282cf67d30ba9be20
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743512844676
+status: 4
+tags: []
+user_id: lucas

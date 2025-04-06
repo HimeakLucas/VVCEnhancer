@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/4bcf32050a6d448390ff4f2f20b4b3ac/artifacts
+end_time: 1742822559128
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 4bcf32050a6d448390ff4f2f20b4b3ac
+run_name: unequaled-mouse-1000
+run_uuid: 4bcf32050a6d448390ff4f2f20b4b3ac
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742822407770
+status: 4
+tags: []
+user_id: lucas

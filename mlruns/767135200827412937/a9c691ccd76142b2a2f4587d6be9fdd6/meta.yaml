@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/767135200827412937/a9c691ccd76142b2a2f4587d6be9fdd6/artifacts
+deleted_time: 1743592034353
+end_time: 1743354436331
+entry_point_name: ''
+experiment_id: '767135200827412937'
+lifecycle_stage: deleted
+run_id: a9c691ccd76142b2a2f4587d6be9fdd6
+run_name: persistent-ray-185
+run_uuid: a9c691ccd76142b2a2f4587d6be9fdd6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743354436289
+status: 4
+tags: []
+user_id: lucas

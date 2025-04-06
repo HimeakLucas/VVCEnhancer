@@ -1,0 +1,16 @@
+artifact_uri: mlflow-artifacts:/767135200827412937/3b8dc037aa2548a793b3ddb84d7d2225/artifacts
+deleted_time: 1743592020345
+end_time: 1743419330654
+entry_point_name: ''
+experiment_id: '767135200827412937'
+lifecycle_stage: deleted
+run_id: 3b8dc037aa2548a793b3ddb84d7d2225
+run_name: dashing-ram-444
+run_uuid: 3b8dc037aa2548a793b3ddb84d7d2225
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743419204525
+status: 4
+tags: []
+user_id: lucas

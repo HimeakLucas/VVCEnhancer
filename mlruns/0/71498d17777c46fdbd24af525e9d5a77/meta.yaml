@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/71498d17777c46fdbd24af525e9d5a77/artifacts
+end_time: 1742822897029
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 71498d17777c46fdbd24af525e9d5a77
+run_name: dazzling-toad-69
+run_uuid: 71498d17777c46fdbd24af525e9d5a77
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1742822606463
+status: 4
+tags: []
+user_id: lucas
