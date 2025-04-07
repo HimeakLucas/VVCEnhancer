@@ -5,3 +5,5 @@ data/frames/
 data 
 scripts/offline_dataset
 __pycache__/
+mlruns/
+mlartifacts/ 
