@@ -1,0 +1,17 @@
+name: VVCEnhancer
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.11
+  - numpy
+  - pytorch::pytorch
+  - torchvision==0.15.2
+  - conda-forge::mlflow
+  - conda-forge::tqdm
+  - conda-forge::torchinfo
+  - conda-forge::opencv
+  - libjpeg-turbo
+  - libpng
+  - zlib
+prefix: /home/lucas/miniconda3/envs/VVCEnhancer

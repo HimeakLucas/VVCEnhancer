@@ -15,10 +15,10 @@ import mlflow.pytorch
 from mlflow.models import infer_signature
 import tempfile
 
-
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
-from models.ar_cnn import AR_CNN, QuickLoss  
+
+from models.lw_cnn import PostProcessingNet  
 from utils.online_patch_dataset import OnlinePatchDataset
 from utils.online_patch_dataset import PairedTransform
 from utils.metrics import calculate_psnr, calculate_ssim
@@ -33,6 +33,16 @@ def set_seed(seed=42):
     os.environ["PYTHONHASHSEED"] = str(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+class QuickLoss(nn.Module):
+    def __init__(self, grad_weight=0):
+        super(QuickLoss, self).__init__()
+        self.grad_weight = grad_weight
+        self.l1 = nn.L1Loss()
+    
+    def forward(self, output, target):
+        loss = self.l1(output, target)
+        return loss
 
 def train(model, train_loader, optimizer, criterion, device):
     model.train()
@@ -99,16 +109,17 @@ def main():
     set_seed(seed)
 
     num_epochs = 200
-    batch_size = 32
+    batch_size = 16
     learning_rate = 1e-4
     grad_weight = 0
-    patchs_per_frame = 8  # considerando sliding window desativado para validação
-    patch_size = 240
+    patchs_per_frame = 4  # Considerando sliding window desativado para validação
+    patch_size = 120 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    stride = None  # considerando sliding window ativado para treinamento
+    stride = None  # Considerando sliding window ativado para treinamento
     edge_prob = 0
 
-    model = AR_CNN().to(device)
+
+    model = PostProcessingNet(in_channels=1, num_feat_blocks=8).to(device)
     criterion = QuickLoss(grad_weight=grad_weight)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     transform = transforms.ToTensor()
@@ -118,7 +129,7 @@ def main():
     val_original_dir = "../data/frames_y/val/original"
     val_processed_dir = "../data/frames_y/val/qp47"
 
-# Remova a transformação ToTensor original
+
     train_transform = PairedTransform(augment=True, patch_size=patch_size)
     val_transform = PairedTransform(augment=False, patch_size=patch_size)
 
@@ -145,17 +156,16 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=6, pin_memory=True)
 
-    # Configurando o Tracking Server e o Experimento no MLflow
     mlflow.set_tracking_uri(uri="http://127.0.0.1:8080")
-    experiment_name = "Exemplo AR-CNN 4"
+    experiment_name = "Test LW_CNN"
     try:
         mlflow.set_experiment(experiment_name)
     except Exception as e:
         mlflow.create_experiment(experiment_name)
         mlflow.set_experiment(experiment_name)
 
-    best_psnr_improvment = -float("inf")  # Inicializando para salvar o melhor modelo
-    best_ssim_improvment = -float("inf")  # Inicializando para salvar o melhor modelo
+    best_psnr_improvment = -float("inf")  
+    best_ssim_improvment = -float("inf") 
 
     with mlflow.start_run():
         params = {
@@ -180,7 +190,6 @@ def main():
             
             mlflow.log_artifact(model_summary)
 
-
         for epoch in range(num_epochs):
             start_time = time.time()
             print(f"\n[Epoch {epoch}/{num_epochs}] ")
@@ -201,12 +210,10 @@ def main():
             ssim_improvement = (val_ssim - val_baseline_ssim) / val_baseline_ssim * 100 if val_baseline_ssim > 0 else 0.0
             print(f"  >> Improvement SSIM: {ssim_improvement:.3f}%")
 
-            # Gerando assinatura com um exemplo de entrada
             example_input, _ = next(iter(val_loader))
             example_input = example_input.to(device)
             signature = infer_signature(example_input.cpu().numpy(), model(example_input).cpu().detach().numpy())
 
-            # Logando o modelo com assinatura e exemplo de entrada
             mlflow.pytorch.log_model(model, "models", signature=signature, input_example=example_input.cpu().numpy())
 
             mlflow.log_metrics({
@@ -217,27 +224,24 @@ def main():
                 "val_baseline_psnr": val_baseline_psnr,
                 "val_baseline_ssim": val_baseline_ssim,
                 "psnr_improvement": psnr_improvement,
-                "ssim_improvement": ssim_improvement,
-                "epochs_completed": epoch,
-                "epoch_duration": epoch_duration,
+                "ssim_improvement": ssim_improvement
             }, step=epoch)
 
             with tempfile.TemporaryDirectory() as tmpdir:
-
                 if psnr_improvement > best_psnr_improvment:
                     best_psnr_improvment = psnr_improvement
                     best_model_path = os.path.join(tmpdir, "best_psnr_model.pt")
                     torch.save(model.state_dict(), best_model_path)
                     mlflow.log_artifact(best_model_path)
-                    print("  >> New best psnr model saved!")
+                    print("  >> New best PSNR model saved!")
 
                 if ssim_improvement > best_ssim_improvment:
                     best_ssim_improvment = ssim_improvement
                     best_model_path = os.path.join(tmpdir, "best_ssim_model.pt")
                     torch.save(model.state_dict(), best_model_path)
                     mlflow.log_artifact(best_model_path)
-                    print("  >> New best ssim model saved!")
-                                
+                    print("  >> New best SSIM model saved!")
+                                    
             mlflow.log_metric("best_psnr_improvement", best_psnr_improvment, step=epoch)
             mlflow.log_metric("best_ssim_improvement", best_ssim_improvment, step=epoch)
 
